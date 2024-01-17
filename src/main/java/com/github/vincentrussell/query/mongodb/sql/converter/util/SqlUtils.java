@@ -663,7 +663,7 @@ public final class SqlUtils {
      * @return true if is a column.
      */
     public static boolean isColumn(final Expression expression) {
-        return (expression instanceof Column && !((Column) expression).getName(false).matches("^(\".*\"|true|false)$"));
+        return (expression instanceof Column && !((Column) expression).getName(false).matches("^(\'.*\'|true|false)$"));
     }
 
     /**

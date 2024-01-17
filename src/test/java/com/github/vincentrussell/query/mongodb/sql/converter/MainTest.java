@@ -78,7 +78,7 @@ public class MainTest {
     @Test
     public void interactiveMode() throws IOException,ParseException, ClassNotFoundException, InterruptedException, com.github.vincentrussell.query.mongodb.sql.converter.ParseException {
         exit.expectSystemExitWithStatus(0);
-        systemInMock.provideLines("select column1 from my_table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")");
+        systemInMock.provideLines("select column1 from my_table where value IN ('theValue1','theValue2','theValue3')");
         try {
             Main.main(new String[]{"-i"});
         } finally {
@@ -107,7 +107,7 @@ public class MainTest {
     @Test
     public void interactiveModeWithLooping() throws IOException,ParseException, ClassNotFoundException, InterruptedException, com.github.vincentrussell.query.mongodb.sql.converter.ParseException {
         exit.expectSystemExitWithStatus(0);
-        systemInMock.provideLines("select column1 from my_table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")");
+        systemInMock.provideLines("select column1 from my_table where value IN ('theValue1','theValue2','theValue3')");
 
         runInSeparateThread(new ExceptionRunnable() {
             @Override
@@ -134,7 +134,7 @@ public class MainTest {
                 "})".trim(), systemOutRule.getLog().replaceAll(Pattern.quote(Main.ENTER_SQL_TEXT),"")
                 .replaceAll(Pattern.quote(Main.CONTINUE_TEXT), "").replaceAll("\r","").trim());
 
-        systemInMock.provideLines("y", "select column1 from my_table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")");
+        systemInMock.provideLines("y", "select column1 from my_table where value IN ('theValue1','theValue2','theValue3')");
         Thread.sleep(1000);
         systemInMock.provideLines("n");
         Thread.sleep(1000);
@@ -206,7 +206,7 @@ public class MainTest {
         exit.expectSystemExitWithStatus(0);
         destinationFile.delete();
         try (FileOutputStream fileOutputStream = new FileOutputStream(sourceFile)) {
-            IOUtils.write("select column1 from my_table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")", fileOutputStream, StandardCharsets.UTF_8);
+            IOUtils.write("select column1 from my_table where value IN ('theValue1','theValue2','theValue3')", fileOutputStream, StandardCharsets.UTF_8);
             Main.main(new String[]{"-s", sourceFile.getAbsolutePath(), "-d", destinationFile.getAbsolutePath()});
             assertTrue(destinationFile.exists());
             try (FileInputStream fileInputStream = new FileInputStream(destinationFile)) {
@@ -233,7 +233,7 @@ public class MainTest {
         exit.expectSystemExitWithStatus(0);
         destinationFile.delete();
             Main.main(new String[]{"-d", destinationFile.getAbsolutePath(),
-                    "-sql","select column1 from my_table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")"});
+                    "-sql","select column1 from my_table where value IN ('theValue1','theValue2','theValue3')"});
             assertTrue(destinationFile.exists());
             try (FileInputStream fileInputStream = new FileInputStream(destinationFile)) {
                 assertEquals("******Mongo Query:*********\n" +

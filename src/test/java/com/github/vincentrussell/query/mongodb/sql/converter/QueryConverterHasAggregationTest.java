@@ -17,7 +17,7 @@ public class QueryConverterHasAggregationTest {
 
     @Test
     public void simpleEquals() throws ParseException {
-        QueryConverter queryConverter = builder.sqlString("select * from my_table WHERE column = \"value\"").build();
+        QueryConverter queryConverter = builder.sqlString("select * from my_table WHERE column = 'value'").build();
         assertFalse(queryConverter.getMongoQuery().isRequiresMultistepAggregation());
     }
 

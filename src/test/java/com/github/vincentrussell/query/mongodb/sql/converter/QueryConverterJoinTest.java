@@ -201,7 +201,7 @@ public class QueryConverterJoinTest {
     
     @Test
     public void writeInnerJoinByOneFieldWhereInBaseTable() throws ParseException, IOException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.Column = t2.Column where t1.whereColumn = \"whereValue\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.Column = t2.Column where t1.whereColumn = 'whereValue'").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
@@ -244,7 +244,7 @@ public class QueryConverterJoinTest {
     
     @Test
     public void writeInnerJoinByOneFieldWhereInJoinTable() throws ParseException, IOException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.Column = t2.Column where t2.whereColumn = \"whereValue\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.Column = t2.Column where t2.whereColumn = 'whereValue'").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
@@ -290,7 +290,7 @@ public class QueryConverterJoinTest {
     
     @Test
     public void writeInnerJoinByOneFieldWhereInBothTables() throws ParseException, IOException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.Column = t2.Column where t1.whereColumn1 = \"whereValue1\" and t2.whereColumn2 = \"whereValue2\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.Column = t2.Column where t1.whereColumn1 = 'whereValue1' and t2.whereColumn2 = 'whereValue2'").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
@@ -340,7 +340,7 @@ public class QueryConverterJoinTest {
     
     @Test
     public void writeInnerJoinByOneFieldWhereNestedInBothTables() throws ParseException, IOException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.Column = t2.Column where t1.nested1.whereColumn1 = \"whereValue1\" and t2.nested2.whereColumn2 = \"whereValue2\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.Column = t2.Column where t1.nested1.whereColumn1 = 'whereValue1' and t2.nested2.whereColumn2 = 'whereValue2'").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
@@ -390,7 +390,7 @@ public class QueryConverterJoinTest {
     
     @Test
     public void writeInnerJoinByOneNestedFieldWhereNestedInBothTables() throws ParseException, IOException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.nested1.Column = t2.nested2.Column where t1.nested1.whereColumn1 = \"whereValue1\" and t2.nested2.whereColumn2 = \"whereValue2\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.nested1.Column = t2.nested2.Column where t1.nested1.whereColumn1 = 'whereValue1' and t2.nested2.whereColumn2 = 'whereValue2'").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
@@ -440,7 +440,7 @@ public class QueryConverterJoinTest {
     
     @Test
     public void writeInnerJoinByOneNestedFieldWhereNestedInBothTablesWithOr() throws ParseException, IOException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.nested1.Column = t2.nested2.Column where t1.nested1.whereColumn1 = \"whereValue1\" or t2.nested2.whereColumn2 = \"whereValue2\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.nested1.Column = t2.nested2.Column where t1.nested1.whereColumn1 = 'whereValue1' or t2.nested2.whereColumn2 = \"whereValue2\"").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
@@ -646,7 +646,7 @@ public class QueryConverterJoinTest {
     
     @Test
     public void writeTwoInnerJoinByOneNestedFieldWhereNestedInBothTables() throws ParseException, IOException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.nested1.Column = t2.nested2.Column inner join my_table3 as t3 on t1.nested1.Column = t3.nested3.Column where t1.nested1.whereColumn1 = \"whereValue1\" and t2.nested2.whereColumn2 = \"whereValue2\" and t3.nested3.whereColumn3 = \"whereValue3\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.nested1.Column = t2.nested2.Column inner join my_table3 as t3 on t1.nested1.Column = t3.nested3.Column where t1.nested1.whereColumn1 = 'whereValue1' and t2.nested2.whereColumn2 = 'whereValue2' and t3.nested3.whereColumn3 = 'whereValue3'").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 
@@ -728,7 +728,7 @@ public class QueryConverterJoinTest {
     
     @Test
     public void writeTwoInnerJoinByOneNestedFieldWhereNestedInBothTablesWithOr() throws ParseException, IOException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.nested1.Column = t2.nested2.Column inner join my_table3 as t3 on t1.nested1.Column = t3.nested3.Column where (t1.nested1.whereColumn1 = \"whereValue1\" and t2.nested2.whereColumn2 = \"whereValue2\") or t3.nested3.whereColumn3 = \"whereValue3\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select t1.Column1, t2.Column2 from my_table as t1 inner join my_table2 as t2 on t1.nested1.Column = t2.nested2.Column inner join my_table3 as t3 on t1.nested1.Column = t3.nested3.Column where (t1.nested1.whereColumn1 = 'whereValue1' and t2.nested2.whereColumn2 = 'whereValue2') or t3.nested3.whereColumn3 = 'whereValue3'").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.aggregate([{\n" + 

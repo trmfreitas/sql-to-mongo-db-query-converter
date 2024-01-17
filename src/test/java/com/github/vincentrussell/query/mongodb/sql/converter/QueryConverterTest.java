@@ -44,7 +44,7 @@ public class QueryConverterTest {
 
     @Test
     public void selectFieldSurroundedInQuotes() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table WHERE \"References.field\" = \"abc123\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table WHERE \"References.field\" = 'abc123'").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(document("References.field", "abc123"), mongoDBQueryHolder.getQuery());
     }
@@ -89,7 +89,7 @@ public class QueryConverterTest {
     @Test
     public void betweenWithDates() throws ParseException, java.text.ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder().sqlString("SELECT * FROM Products\n" +
-                "WHERE date BETWEEN \"2012-12-01\" AND \"2012-12-02\"").fieldNameToFieldTypeMapping(new HashMap(){{
+                "WHERE date BETWEEN '2012-12-01' AND '2012-12-02'").fieldNameToFieldTypeMapping(new HashMap(){{
             put("date",FieldType.DATE);
         }}).build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
@@ -99,7 +99,7 @@ public class QueryConverterTest {
 
     @Test
     public void selectFieldSurroundedInQuotesInFunctions() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from table where ignoreCaseMatch(\"field1\",\"value\") OR \"field1\" = \"value\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from table where ignoreCaseMatch(\"field1\",'value') OR \"field1\" = 'value'").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(document("$or", objsToList(documentValuesArray("$ignoreCaseMatch", "field1", "value"), document("field1", "value"))), mongoDBQueryHolder.getQuery());
     }
@@ -169,7 +169,7 @@ public class QueryConverterTest {
     @Test
     @SuppressWarnings("unchecked")
     public void selectAllFromTableWithSimpleWhereClauseLongOverrideWithNumber() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value=\"1\"").fieldNameToFieldTypeMapping(new HashMap(){{
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value='1'").fieldNameToFieldTypeMapping(new HashMap(){{
             put("value",FieldType.NUMBER);
         }}).build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
@@ -193,7 +193,7 @@ public class QueryConverterTest {
     @Test
     @SuppressWarnings("unchecked")
     public void selectAllFromTableWithSimpleWhereClauseLongOverrideWithNumberGT() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value > \"1\"").fieldNameToFieldTypeMapping(new HashMap(){{
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value > 1").fieldNameToFieldTypeMapping(new HashMap(){{
             put("value",FieldType.NUMBER);
         }}).build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
@@ -205,7 +205,7 @@ public class QueryConverterTest {
     @Test
     @SuppressWarnings("unchecked")
     public void selectAllFromTableWithSimpleWhereClauseLongOverrideWithDateGT() throws ParseException, java.text.ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value > \"2012-12-01\"").fieldNameToFieldTypeMapping(new HashMap(){{
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value > '2012-12-01'").fieldNameToFieldTypeMapping(new HashMap(){{
             put("value",FieldType.DATE);
         }}
         ).build();
@@ -248,7 +248,7 @@ public class QueryConverterTest {
     @Test
     @SuppressWarnings("unchecked")
     public void selectAllFromTableWithSimpleWhereClauseLongOverrideWithDateISO8601GT() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value > \"2013-07-12T18:31:01.000Z\"")
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value > '2013-07-12T18:31:01.000Z'")
                 .fieldNameToFieldTypeMapping(new HashMap(){{
             put("value",FieldType.DATE);
         }}).build();
@@ -261,7 +261,7 @@ public class QueryConverterTest {
     @Test
     @SuppressWarnings("unchecked")
     public void selectAllFromTableWithSimpleWhereClauseLongOverrideWithDateNaturalGT() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value > \"45 days ago\"").fieldNameToFieldTypeMapping(new HashMap(){{
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value > '45 days ago'").fieldNameToFieldTypeMapping(new HashMap(){{
             put("value",FieldType.DATE);
         }}).build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
@@ -369,7 +369,7 @@ public class QueryConverterTest {
     public void selectAllFromTableWithSimpleWhereClauseLongOverrideWitUnparseableNaturalDateGT() throws ParseException {
         expectedException.expect(ParseException.class);
         expectedException.expectMessage(containsString("could not convert who cares to a date"));
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value > \"who cares\"").fieldNameToFieldTypeMapping(new HashMap(){{
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value > 'who cares'").fieldNameToFieldTypeMapping(new HashMap(){{
             put("value",FieldType.DATE);
         }}).build();
     }
@@ -543,7 +543,7 @@ public class QueryConverterTest {
 
     @Test
     public void likeTestWithDoubleQuotes() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where _id LIKE \"PREFIX%\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where _id LIKE 'PREFIX%'").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
@@ -675,7 +675,7 @@ public class QueryConverterTest {
     @Test
     public void specialtyFunctionWithEqualsTest() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder()
-                .sqlString("select * from my_table where someFunction('123') = \"1234\" AND (foo = 'bar')")
+                .sqlString("select * from my_table where someFunction('123') = '1234' AND (foo = 'bar')")
                 .defaultFieldType(FieldType.STRING).build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
@@ -686,7 +686,7 @@ public class QueryConverterTest {
     @Test
     public void specialtyFunctionWithInTest() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder()
-                .sqlString("select * from my_table where someFunction('field') IN (\"1234\") AND (foo = 'bar')")
+                .sqlString("select * from my_table where someFunction('field') IN ('1234') AND (foo = 'bar')")
                 .defaultFieldType(FieldType.STRING).build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
@@ -697,7 +697,7 @@ public class QueryConverterTest {
     @Test
     public void specialtyFunctionWithNotInTest() throws ParseException {
         QueryConverter queryConverter = new QueryConverter.Builder()
-                .sqlString("select * from my_table where someFunction('field') NOT IN (\"1234\") AND (foo = 'bar')")
+                .sqlString("select * from my_table where someFunction('field') NOT IN ('1234') AND (foo = 'bar')")
                 .defaultFieldType(FieldType.STRING).build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
@@ -750,7 +750,7 @@ public class QueryConverterTest {
     @Test
     public void getQueryAsDocumentCountAll() throws ParseException, IOException {
         QueryConverter queryConverter = new QueryConverter.Builder()
-                .sqlString("select * from my_table where value=1 OR value2=\"theValue\"").build();
+                .sqlString("select * from my_table where value=1 OR value2='theValue'").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         Document document = queryConverter.getQueryAsDocument();
         assertEquals("my_table", document.getString("collection"));
@@ -990,7 +990,7 @@ public class QueryConverterTest {
 
     @Test
     public void selectAllFromTableWithSimpleWhereClauseString() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value=\"theValue\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value='theValue'").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
@@ -999,7 +999,7 @@ public class QueryConverterTest {
 
     @Test
     public void selectAllFromTableWithSimpleWhereSimpleAnd() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value=1 AND value2=\"theValue\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value=1 AND value2='theValue'").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
@@ -1008,7 +1008,7 @@ public class QueryConverterTest {
 
     @Test
     public void selectAllFromTableWithSimpleWhereSimpleOr() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value=1 OR value2=\"theValue\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value=1 OR value2='theValue'").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
@@ -1017,7 +1017,7 @@ public class QueryConverterTest {
 
     @Test
     public void selectAllFromTableWithSimpleWhereNotBeforeBraces() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where NOT (value=\"theValue\")").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where NOT (value='theValue')").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
@@ -1026,7 +1026,7 @@ public class QueryConverterTest {
 
     @Test
     public void selectAllFromTableWithSimpleWhereNotBeforeAndInBraces() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where NOT (value=1 AND value2=\"theValue\")").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where NOT (value=1 AND value2='theValue')").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
@@ -1035,7 +1035,7 @@ public class QueryConverterTest {
 
     @Test
     public void selectAllFromTableWithSimpleWhereNotBeforeOrInBraces() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where NOT (value=1 OR value2=\"theValue\")").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where NOT (value=1 OR value2='theValue')").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
@@ -1044,7 +1044,7 @@ public class QueryConverterTest {
 
     @Test
     public void selectAllFromTableWithSimpleWhereNestedOr() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value=1 OR (number = 1 AND value2=\"theValue\")").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where value=1 OR (number = 1 AND value2='theValue')").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
@@ -1060,7 +1060,7 @@ public class QueryConverterTest {
 
     @Test
     public void selectColumnsFromTableWithSimpleWhereClauseString() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select column1, column2 from my_table where value=\"theValue\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select column1, column2 from my_table where value='theValue'").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(3,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
@@ -1070,7 +1070,7 @@ public class QueryConverterTest {
 
     @Test
     public void selectColumnsWithIdFromTableWithSimpleWhereClauseString() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select column1, column2, _id from my_table where value=\"theValue\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select column1, column2, _id from my_table where value='theValue'").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(3,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
@@ -1089,7 +1089,7 @@ public class QueryConverterTest {
 
     @Test
     public void selectNestedColumnsFromTableWithSimpleWhereClauseString() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select document.subdocument.column1, document.subdocument.column2 from my_table where value=\"theValue\"").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select document.subdocument.column1, document.subdocument.column2 from my_table where value='theValue'").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(3,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
@@ -1101,7 +1101,7 @@ public class QueryConverterTest {
     public void selectWithSubQuery() throws ParseException {
         expectedException.expect(ParseException.class);
         expectedException.expectMessage(containsString("Unsupported subselect expression"));
-        new QueryConverter.Builder().sqlString("select (select id from table2), column2 from my_table where value=\"theValue\"").build();
+        new QueryConverter.Builder().sqlString("select (select id from table2), column2 from my_table where value='theValue'").build();
     }
 
     @Test
@@ -1125,7 +1125,7 @@ public class QueryConverterTest {
 
     @Test
     public void deleteQueryMoreComplicated() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("delete from table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("delete from table where value IN ('theValue1','theValue2','theValue3')").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(document("$expr",documentValuesArray("$in","$value",objsToList("theValue1","theValue2","theValue3"))),mongoDBQueryHolder.getQuery());
         assertEquals(SQLCommandType.DELETE, mongoDBQueryHolder.getSqlCommandType());
@@ -1201,7 +1201,7 @@ public class QueryConverterTest {
     public void fromWithSubQuery() throws ParseException {
         expectedException.expect(ParseException.class);
         expectedException.expectMessage(containsString("Only one simple table name is supported."));
-        new QueryConverter.Builder().sqlString("select column2 (select column4 from table_2) my_table where value=\"theValue\"").build();
+        new QueryConverter.Builder().sqlString("select column2 (select column4 from table_2) my_table where value='theValue'").build();
     }
 
 
@@ -1209,12 +1209,12 @@ public class QueryConverterTest {
     public void selectFromMultipleTables() throws ParseException {
         expectedException.expect(ParseException.class);
         expectedException.expectMessage(containsString("Join type not supported"));
-        new QueryConverter.Builder().sqlString("select table1.col1, table2.col2 from table1,table2 where table1.id=table2.id AND value=\"theValue\"").build();
+        new QueryConverter.Builder().sqlString("select table1.col1, table2.col2 from table1,table2 where table1.id=table2.id AND value='theValue'").build();
     }
 
     @Test
     public void selectColumnsFromTableWithSimpleWhereWithInClause() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select column1 from my_table where value IN (\"theValue1\",\"theValue2\",\"theValue3\")").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select column1 from my_table where value IN ('theValue1','theValue2','theValue3')").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
@@ -1224,7 +1224,7 @@ public class QueryConverterTest {
 
     @Test
     public void selectColumnsFromTableWithSimpleWhereWithNotInClause() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select column1 from my_table where value NOT IN (\"theValue1\",\"theValue2\",\"theValue3\")").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select column1 from my_table where value NOT IN ('theValue1','theValue2','theValue3')").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
@@ -1234,7 +1234,7 @@ public class QueryConverterTest {
 
     @Test
     public void complicatedTest() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where (value=1 and  date(column,'YYYY-MM-DD') <= '2016-12-12' AND nullField IS NULL ) OR ((number > 5 OR number = 1) AND value2=\"theValue\")").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where (value=1 and  date(column,'YYYY-MM-DD') <= '2016-12-12' AND nullField IS NULL ) OR ((number > 5 OR number = 1) AND value2='theValue')").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(0,mongoDBQueryHolder.getProjection().size());
         assertEquals("my_table",mongoDBQueryHolder.getCollection());
@@ -1260,7 +1260,7 @@ public class QueryConverterTest {
 
     @Test
     public void aLotofOrs() throws ParseException, IOException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where (value = \"1234\" OR value = \"1235\" OR value = \"1236\" OR value = \"1237\"  OR value = \"1238\")").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where (value = '1234' OR value = '1235' OR value = '1236' OR value = '1237'  OR value = '1238')").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.find({\n" +
@@ -1287,7 +1287,7 @@ public class QueryConverterTest {
 
     @Test
     public void aLotofAnds() throws ParseException, IOException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where (value = \"1234\" AND value = \"1235\" AND value = \"1236\" AND value = \"1237\"  AND value = \"1238\")").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select * from my_table where (value = '1234' AND value = '1235' AND value = '1236' AND value = '1237'  AND value = '1238')").build();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         queryConverter.write(byteArrayOutputStream);
         assertEquals("db.my_table.find({\n" +
@@ -2984,7 +2984,7 @@ public class QueryConverterTest {
     
     @Test
     public void aliasGroupQuerySingleGroup() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select aa as bb, count(*) as dd from my_table where aa = \"value\" group by aa").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select aa as bb, count(*) as dd from my_table where aa = 'value' group by aa").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals(document("_id","$aa").append("dd", document("$sum",1)),mongoDBQueryHolder.getProjection());
@@ -2997,7 +2997,7 @@ public class QueryConverterTest {
     
     @Test
     public void aliasGroupQueryAliasAndNot() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select aa as bb, cc, count(*) as dd from my_table where aa = \"value\" group by aa, cc").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select aa as bb, cc, count(*) as dd from my_table where aa = 'value' group by aa, cc").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals(document("_id",document("aa","$aa").append("cc","$cc")).append("dd", document("$sum",1)),mongoDBQueryHolder.getProjection());
@@ -3010,7 +3010,7 @@ public class QueryConverterTest {
     
     @Test
     public void aliasGroupQueryNoGroupAlias() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select aa as bb, cc, count(*) from my_table where aa = \"value\" group by aa, cc").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select aa as bb, cc, count(*) from my_table where aa = 'value' group by aa, cc").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals(document("_id",document("aa","$aa").append("cc","$cc")).append("count", document("$sum",1)),mongoDBQueryHolder.getProjection());
@@ -3023,7 +3023,7 @@ public class QueryConverterTest {
     
     @Test
     public void aliasGroupQueryAllAlias() throws ParseException {
-        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select aa as bb, cc as dd, count(*) as ee from my_table where aa = \"value\" group by aa, cc").build();
+        QueryConverter queryConverter = new QueryConverter.Builder().sqlString("select aa as bb, cc as dd, count(*) as ee from my_table where aa = 'value' group by aa, cc").build();
         MongoDBQueryHolder mongoDBQueryHolder = queryConverter.getMongoQuery();
         assertEquals(2,mongoDBQueryHolder.getProjection().size());
         assertEquals(document("_id",document("aa","$aa").append("cc","$cc")).append("ee", document("$sum",1)),mongoDBQueryHolder.getProjection());
