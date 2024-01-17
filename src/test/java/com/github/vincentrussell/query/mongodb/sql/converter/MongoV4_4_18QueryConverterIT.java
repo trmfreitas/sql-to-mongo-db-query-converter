@@ -1,30 +1,31 @@
 package com.github.vincentrussell.query.mongodb.sql.converter;
 
-import com.github.vincentrussell.query.mongodb.sql.converter.rule.MongoRule;
-import com.google.common.collect.Lists;
-import com.mongodb.client.MongoCollection;
-import de.flapdoodle.embed.mongo.distribution.Feature;
-import de.flapdoodle.embed.mongo.distribution.IFeatureAwareVersion;
+import static org.junit.Assert.assertEquals;
+
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.List;
+
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.json.JSONException;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
 
-import java.io.IOException;
-import java.util.EnumSet;
-import java.util.Iterator;
-import java.util.List;
+import com.github.vincentrussell.query.mongodb.sql.converter.rule.MongoRule;
+import com.google.common.collect.Lists;
+import com.mongodb.client.MongoCollection;
 
-import static org.junit.Assert.assertEquals;
+import de.flapdoodle.embed.mongo.distribution.Version;
 
-public class MongoV4_3_1QueryConverterIT extends AbstractQueryConverterIT {
+public class MongoV4_4_18QueryConverterIT extends AbstractQueryConverterIT {
 
     @ClassRule
-    public static MongoRule mongoRule = new MongoRule(Version.V4_3_1);
+    public static MongoRule mongoRule = new MongoRule(Version.V4_4_18);
 
     public MongoRule getMongoRule() {
         return mongoRule;
@@ -424,38 +425,6 @@ public class MongoV4_3_1QueryConverterIT extends AbstractQueryConverterIT {
 
         } finally {
             newCollection.drop();
-        }
-    }
-
-    public enum Version implements IFeatureAwareVersion {
-
-        V4_3_1("4.3.1", Feature.SYNC_DELAY, Feature.STORAGE_ENGINE, Feature.ONLY_64BIT,
-                Feature.NO_CHUNKSIZE_ARG, Feature.MONGOS_CONFIGDB_SET_STYLE, Feature.NO_HTTP_INTERFACE_ARG,
-                Feature.ONLY_WITH_SSL, Feature.ONLY_WINDOWS_2008_SERVER, Feature.NO_SOLARIS_SUPPORT,
-                Feature.NO_BIND_IP_TO_LOCALHOST);
-
-
-        private final String specificVersion;
-        private EnumSet<Feature> features;
-
-        Version(String vName, Feature...features) {
-            this.specificVersion = vName;
-            this.features = Feature.asSet(features);
-        }
-
-        @Override
-        public boolean enabled(Feature feature) {
-            return features.contains(feature);
-        }
-
-        @Override
-        public EnumSet<Feature> getFeatures() {
-            return EnumSet.copyOf(features);
-        }
-
-        @Override
-        public String asInDownloadPath() {
-            return specificVersion;
         }
     }
 

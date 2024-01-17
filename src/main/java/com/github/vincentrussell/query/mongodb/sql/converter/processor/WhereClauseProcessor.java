@@ -88,16 +88,21 @@ public class WhereClauseProcessor {
 
     //Parse comparative expression != = < > => <= into mongo expr
     private void parseComparativeExpr(final Document query, final Expression leftExpression,
-                                      final Expression rightExpression, final String comparatorType)
+                                      final Expression rightExpression, final String comparatorType,
+                                      final boolean aggregationMode1)
             throws ParseException {
         String operator = "$" + comparatorType;
+        boolean aggregationModeOut = aggregationMode1;
         if (Function.class.isInstance(leftExpression)) {
+            if (leftExpression.toString().startsWith("bitAnd")) {
+                aggregationModeOut = true;
+            }
             Document doc = new Document();
-            Object leftParse = parseExpression(new Document(), leftExpression, rightExpression);
-            Object rightParse = parseExpression(new Document(), rightExpression, leftExpression);
+            Object leftParse = parseExpression(new Document(), leftExpression, rightExpression, aggregationModeOut);
+            Object rightParse = parseExpression(new Document(), rightExpression, leftExpression, aggregationModeOut);
             doc.put(operator, Arrays.asList(leftParse, (SqlUtils.isColumn(rightExpression)
                     && !rightExpression.toString().startsWith("$") ? "$" + rightParse : rightParse)));
-            if (requiresMultistepAggregation) {
+            if (requiresMultistepAggregation || aggregationModeOut) {
                 query.put("$expr", doc);
             } else {
                 query.putAll(doc);
@@ -112,13 +117,14 @@ public class WhereClauseProcessor {
                                 (rightName.startsWith("$") ? rightName : "$" + rightName)));
                 query.put("$expr", doc);
             } else {
-                query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(),
-                        parseExpression(new Document(), rightExpression, leftExpression));
+                query.put(parseExpression(new Document(), leftExpression, rightExpression,
+                        aggregationModeOut).toString(),
+                        parseExpression(new Document(), rightExpression, leftExpression, aggregationModeOut));
             }
         } else if (Function.class.isInstance(rightExpression)) {
             Document doc = new Document();
-            Object leftParse = parseExpression(new Document(), rightExpression, leftExpression);
-            Object rightParse = parseExpression(new Document(), leftExpression, rightExpression);
+            Object leftParse = parseExpression(new Document(), rightExpression, leftExpression, aggregationModeOut);
+            Object rightParse = parseExpression(new Document(), leftExpression, rightExpression, aggregationModeOut);
             doc.put(operator, Arrays.asList(leftParse, (SqlUtils.isColumn(leftExpression)
                     && !leftExpression.toString().startsWith("$") ? "$" + rightParse : rightParse)));
             if (requiresMultistepAggregation) {
@@ -129,28 +135,38 @@ public class WhereClauseProcessor {
         } else if (SqlUtils.isColumn(leftExpression)) {
             Document subdocument = new Document();
             if (operator.equals("$eq")) {
-                query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(),
-                        parseExpression(new Document(), rightExpression, leftExpression));
+                query.put(parseExpression(new Document(), leftExpression, rightExpression,
+                        aggregationModeOut).toString(),
+                        parseExpression(new Document(), rightExpression, leftExpression, aggregationModeOut));
             } else {
-                subdocument.put(operator, parseExpression(new Document(), rightExpression, leftExpression));
-                query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(),
+                subdocument.put(operator, parseExpression(new Document(), rightExpression, leftExpression,
+                        aggregationModeOut));
+                query.put(parseExpression(new Document(), leftExpression, rightExpression,
+                        aggregationModeOut).toString(),
                         subdocument);
             }
         } else {
             Document doc = new Document();
-            Object leftParse = parseExpression(new Document(), leftExpression, rightExpression);
+            Object leftParse = parseExpression(new Document(), leftExpression, rightExpression, aggregationModeOut);
             doc.put(operator, Arrays.asList(leftParse, SqlUtils.nonFunctionToNode(
                     rightExpression, requiresMultistepAggregation)));
-            if (requiresMultistepAggregation) {
+
+            if (operator.equals("$eq")) {
+                aggregationModeOut = true;
+            }
+
+            if (requiresMultistepAggregation || aggregationModeOut) {
                 query.put("$expr", doc);
             } else {
                 Document subdocument = new Document();
                 if ("eq".equals(comparatorType) && String.class.isInstance(leftParse)) {
                     query.put(leftParse.toString(), parseExpression(new Document(),
-                            rightExpression, leftExpression));
+                            rightExpression, leftExpression, aggregationModeOut));
                 } else if (String.class.isInstance(leftParse)) {
-                    subdocument.put(operator, parseExpression(new Document(), rightExpression, leftExpression));
-                    query.put(parseExpression(new Document(), leftExpression, rightExpression).toString(),
+                    subdocument.put(operator, parseExpression(new Document(), rightExpression, leftExpression,
+                         aggregationModeOut));
+                    query.put(parseExpression(new Document(), leftExpression, rightExpression,
+                         aggregationModeOut).toString(),
                             subdocument);
                 } else {
                     query.putAll(doc);
@@ -164,12 +180,14 @@ public class WhereClauseProcessor {
      * @param query the query in {@link Document} format
      * @param incomingExpression the incoming {@link Expression}
      * @param otherSide the {@link Expression} on the other side
+     * @param aggregationMode indication if parsing is inside an aggregation expression
      * @return the converted mongo structure.
      * @throws ParseException if there is an issue parsing the incomingExpression
      */
     @SuppressWarnings("checkstyle:methodlength")
     public Object parseExpression(final Document query,
-                                  final Expression incomingExpression, final Expression otherSide)
+                                  final Expression incomingExpression, final Expression otherSide,
+                                  final boolean aggregationMode)
             throws ParseException {
         if (ComparisonOperator.class.isInstance(incomingExpression)) {
             RegexFunction regexFunction = SqlUtils.isRegexFunction(incomingExpression);
@@ -190,27 +208,27 @@ public class WhereClauseProcessor {
             } else if (EqualsTo.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((EqualsTo) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((EqualsTo) incomingExpression).getRightExpression();
-                parseComparativeExpr(query, leftExpression, rightExpression, "eq");
+                parseComparativeExpr(query, leftExpression, rightExpression, "eq", aggregationMode);
             } else if (NotEqualsTo.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((NotEqualsTo) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((NotEqualsTo) incomingExpression).getRightExpression();
-                parseComparativeExpr(query, leftExpression, rightExpression, "ne");
+                parseComparativeExpr(query, leftExpression, rightExpression, "ne", aggregationMode);
             } else if (GreaterThan.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((GreaterThan) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((GreaterThan) incomingExpression).getRightExpression();
-                parseComparativeExpr(query, leftExpression, rightExpression, "gt");
+                parseComparativeExpr(query, leftExpression, rightExpression, "gt", aggregationMode);
             } else if (MinorThan.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((MinorThan) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((MinorThan) incomingExpression).getRightExpression();
-                parseComparativeExpr(query, leftExpression, rightExpression, "lt");
+                parseComparativeExpr(query, leftExpression, rightExpression, "lt", aggregationMode);
             } else if (GreaterThanEquals.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((GreaterThanEquals) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((GreaterThanEquals) incomingExpression).getRightExpression();
-                parseComparativeExpr(query, leftExpression, rightExpression, "gte");
+                parseComparativeExpr(query, leftExpression, rightExpression, "gte", aggregationMode);
             } else if (MinorThanEquals.class.isInstance(incomingExpression)) {
                 final Expression leftExpression = ((MinorThanEquals) incomingExpression).getLeftExpression();
                 final Expression rightExpression = ((MinorThanEquals) incomingExpression).getRightExpression();
-                parseComparativeExpr(query, leftExpression, rightExpression, "lte");
+                parseComparativeExpr(query, leftExpression, rightExpression, "lte", aggregationMode);
             }
         } else if (LikeExpression.class.isInstance(incomingExpression)
                 && Column.class.isInstance(((LikeExpression) incomingExpression).getLeftExpression())
@@ -233,7 +251,7 @@ public class WhereClauseProcessor {
             if (Function.class.isInstance(isNullExpression.getLeftExpression())) {
                 Document result = ((Document) recurseFunctions(new Document(),
                     isNullExpression.getLeftExpression(), defaultFieldType,
-                    fieldNameToFieldTypeMapping)).append("$exists", isNullExpression.isNot());
+                    fieldNameToFieldTypeMapping, aggregationMode)).append("$exists", isNullExpression.isNot());
                 query.putAll(result);
             } else {
                 query.put(SqlUtils.getStringValue(isNullExpression.getLeftExpression()),
@@ -255,7 +273,7 @@ public class WhereClauseProcessor {
                                     public Object apply(final Expression expression) {
                                         try {
                                             return parseExpression(new Document(), expression,
-                                                    leftExpression);
+                                                    leftExpression, aggregationMode);
                                         } catch (ParseException e) {
                                             throw new RuntimeException(e);
                                         }
@@ -265,7 +283,7 @@ public class WhereClauseProcessor {
                 if (Function.class.isInstance(leftExpression)) {
                     String mongoInFunction = inExpression.isNot() ? "$fnin" : "$fin";
                     query.put(mongoInFunction, new Document("function", parseExpression(new Document(),
-                            leftExpression, otherSide)).append("list", objectList));
+                            leftExpression, otherSide, aggregationMode)).append("list", objectList));
                 } else {
                     String mongoInFunction = inExpression.isNot() ? "$nin" : "$in";
                     Document doc = new Document();
@@ -292,24 +310,25 @@ public class WhereClauseProcessor {
             end.setRightExpression(between.getBetweenExpressionEnd());
             AndExpression andExpression = new AndExpression(between.isNot()
                     ? new NotExpression(start) : start, between.isNot() ? new NotExpression(end) : end);
-            return parseExpression(query, andExpression, otherSide);
+            return parseExpression(query, andExpression, otherSide, aggregationMode);
         } else if (AndExpression.class.isInstance(incomingExpression)) {
-            handleAndOr("$and", (BinaryExpression) incomingExpression, query);
+            handleAndOr("$and", (BinaryExpression) incomingExpression, query, aggregationMode);
         } else if (OrExpression.class.isInstance(incomingExpression)) {
-            handleAndOr("$or", (BinaryExpression) incomingExpression, query);
+            handleAndOr("$or", (BinaryExpression) incomingExpression, query, aggregationMode);
         } else if (Parenthesis.class.isInstance(incomingExpression)) {
             Parenthesis parenthesis = (Parenthesis) incomingExpression;
-            Object expression = parseExpression(new Document(), parenthesis.getExpression(), null);
+            Object expression = parseExpression(new Document(), parenthesis.getExpression(), null, aggregationMode);
             return expression;
         } else if (NotExpression.class.isInstance(incomingExpression)) {
             NotExpression notExpression = (NotExpression) incomingExpression;
             Expression expression = notExpression.getExpression();
             if (Parenthesis.class.isInstance(expression)) {
-                return new Document("$nor", Arrays.asList(parseExpression(query, expression, otherSide)));
+                return new Document("$nor", Arrays.asList(parseExpression(query, expression, otherSide,
+                    aggregationMode)));
             } else if (Column.class.isInstance(expression)) {
                 return new Document(SqlUtils.getStringValue(expression), new Document("$ne", true));
             } else if (ComparisonOperator.class.isInstance(expression)) {
-                Document parsedDocument = (Document) parseExpression(query, expression, otherSide);
+                Document parsedDocument = (Document) parseExpression(query, expression, otherSide, aggregationMode);
                 String column = parsedDocument.keySet().iterator().next();
                 Document value = parsedDocument.get(column, Document.class);
                 return new Document(column, new Document("$not", value));
@@ -327,13 +346,14 @@ public class WhereClauseProcessor {
             } else if (objectIdFunction != null) {
                 return objectIdFunction.toDocument();
             } else {
-                return recurseFunctions(query, function, defaultFieldType, fieldNameToFieldTypeMapping);
+                return recurseFunctions(query, function, defaultFieldType,
+                        fieldNameToFieldTypeMapping, aggregationMode);
             }
         } else if (otherSide == null) {
             return new Document(SqlUtils.getStringValue(incomingExpression), true);
         } else {
             return SqlUtils.getNormalizedValue(incomingExpression, otherSide,
-                    defaultFieldType, fieldNameToFieldTypeMapping, aliasHolder, null);
+                    defaultFieldType, fieldNameToFieldTypeMapping, aliasHolder, null, aggregationMode);
         }
         return query;
     }
@@ -354,64 +374,69 @@ public class WhereClauseProcessor {
      * @param object the value
      * @param defaultFieldType the default {@link FieldType}
      * @param fieldNameToFieldTypeMapping the field name to{@link FieldType} map
+     * @param aggregationMode indicates if inside aggregation expression
      * @return the mongo structure
      * @throws ParseException if the value of the object param could not be parsed
      */
     protected Object recurseFunctions(final Document query, final Object object,
                                       final FieldType defaultFieldType,
-                                      final Map<String, FieldType> fieldNameToFieldTypeMapping) throws ParseException {
+                                      final Map<String, FieldType> fieldNameToFieldTypeMapping,
+                                      final boolean aggregationMode) throws ParseException {
         if (Function.class.isInstance(object)) {
             Function function = (Function) object;
             query.put("$" + SqlUtils.translateFunctionName(function.getName()),
                     recurseFunctions(new Document(), function.getParameters(),
-                            defaultFieldType, fieldNameToFieldTypeMapping));
+                            defaultFieldType, fieldNameToFieldTypeMapping, aggregationMode));
         } else if (ExpressionList.class.isInstance(object)) {
             ExpressionList expressionList = (ExpressionList) object;
             List<Object> objectList = new ArrayList<>();
             for (Expression expression : expressionList.getExpressions()) {
                 objectList.add(recurseFunctions(new Document(), expression,
-                        defaultFieldType, fieldNameToFieldTypeMapping));
+                        defaultFieldType, fieldNameToFieldTypeMapping, aggregationMode));
             }
             return objectList.size() == 1 ? objectList.get(0) : objectList;
         } else if (Expression.class.isInstance(object)) {
             return SqlUtils.getNormalizedValue((Expression) object, null,
-                    defaultFieldType, fieldNameToFieldTypeMapping, null);
+                    defaultFieldType, fieldNameToFieldTypeMapping, null, aggregationMode);
         }
 
         return query.isEmpty() ? null : query;
     }
 
     private void handleAndOr(final String key, final BinaryExpression incomingExpression,
-                             final Document query) throws ParseException {
+                             final Document query, final boolean aggregationMode) throws ParseException {
         final Expression leftExpression = incomingExpression.getLeftExpression();
         final Expression rightExpression = incomingExpression.getRightExpression();
 
-        List result = flattenOrsOrAnds(new ArrayList(), leftExpression, leftExpression, rightExpression);
+        List result = flattenOrsOrAnds(new ArrayList(), leftExpression, leftExpression, rightExpression,
+               aggregationMode);
 
         if (result != null) {
             query.put(key, Lists.reverse(result));
         } else {
-            query.put(key, Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression),
-                    parseExpression(new Document(), rightExpression, leftExpression)));
+            query.put(key, Arrays.asList(parseExpression(new Document(), leftExpression, rightExpression,
+                   aggregationMode),
+                    parseExpression(new Document(), rightExpression, leftExpression, aggregationMode)));
         }
     }
 
     private List flattenOrsOrAnds(final List arrayList, final Expression firstExpression,
                                   final Expression leftExpression,
-                                  final Expression rightExpression) throws ParseException {
+                                  final Expression rightExpression, final boolean aggregationMode)
+                                    throws ParseException {
         if (firstExpression.getClass().isInstance(leftExpression)
                 && isOrAndExpression(leftExpression) && !isOrAndExpression(rightExpression)) {
             Expression left = ((BinaryExpression) leftExpression).getLeftExpression();
             Expression right = ((BinaryExpression) leftExpression).getRightExpression();
-            arrayList.add(parseExpression(new Document(), rightExpression, null));
-            List result = flattenOrsOrAnds(arrayList, firstExpression, left, right);
+            arrayList.add(parseExpression(new Document(), rightExpression, null, aggregationMode));
+            List result = flattenOrsOrAnds(arrayList, firstExpression, left, right, aggregationMode);
             if (result != null) {
                 return arrayList;
             }
         } else if (isOrAndExpression(firstExpression)
                 && !isOrAndExpression(leftExpression) && !isOrAndExpression(rightExpression)) {
-            arrayList.add(parseExpression(new Document(), rightExpression, null));
-            arrayList.add(parseExpression(new Document(), leftExpression, null));
+            arrayList.add(parseExpression(new Document(), rightExpression, null, aggregationMode));
+            arrayList.add(parseExpression(new Document(), leftExpression, null, aggregationMode));
             return arrayList;
         } else {
             return null;

@@ -317,6 +317,9 @@ public final class SQLCommandInfoHolder implements SQLInfoHolder {
                 throws com.github.vincentrussell.query.mongodb.sql.converter.ParseException, ParseException {
             SqlUtils.isTrue(plainSelect != null,
                     "could not parseNaturalLanguageDate SELECT statement from query");
+            if (plainSelect == null) {
+                return null;
+            }
             SqlUtils.isTrue(plainSelect.getFromItem() != null,
                     "could not find table to query.  Only one simple table name is supported.");
             whereClause = plainSelect.getWhere();

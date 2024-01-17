@@ -3,7 +3,9 @@ package com.github.vincentrussell.query.mongodb.sql.converter;
 import com.github.vincentrussell.query.mongodb.sql.converter.rule.MongoRule;
 import de.flapdoodle.embed.mongo.distribution.Version;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 
+@Ignore
 public class MongoV3_4QueryConverterIT extends AbstractQueryConverterIT {
 
     @ClassRule

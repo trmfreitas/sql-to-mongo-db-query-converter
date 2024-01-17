@@ -42,7 +42,8 @@ public class HavingClauseProcessor extends WhereClauseProcessor {
     protected Object recurseFunctions(final Document query,
                                       final Object object,
                                       final FieldType defaultFieldType,
-                                      final Map<String, FieldType> fieldNameToFieldTypeMapping)
+                                      final Map<String, FieldType> fieldNameToFieldTypeMapping,
+                                      final boolean aggregationMode)
             throws ParseException {
         if (Function.class.isInstance(object)) {
             Function function = (Function) object;
@@ -52,7 +53,7 @@ public class HavingClauseProcessor extends WhereClauseProcessor {
                 return "$" + SqlUtils.generateAggField(function, alias).getValue();
             }
         }
-        return super.recurseFunctions(query, object, defaultFieldType, fieldNameToFieldTypeMapping);
+        return super.recurseFunctions(query, object, defaultFieldType, fieldNameToFieldTypeMapping, aggregationMode);
     }
 
 }

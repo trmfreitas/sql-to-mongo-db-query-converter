@@ -48,7 +48,7 @@ public final class JoinProcessor {
 
         matchJoinStep.put("$match", whereClauseProcessor
                 .parseExpression(new Document(), wherePartialExp != null
-                        ? new AndExpression(onExp, wherePartialExp) : onExp, null));
+                        ? new AndExpression(onExp, wherePartialExp) : onExp, null, false));
         return matchJoinStep;
     }
 
@@ -68,6 +68,8 @@ public final class JoinProcessor {
         Document lookupInternal = new Document();
         lookupInternal.put("from", joinTableName);
         lookupInternal.put("let", generateLetsFromON(tholder, onExp, joinTableAlias));
+        //lookupInternal.put("localField", "_id");
+        //lookupInternal.put("foreignField", "_id");
         lookupInternal.put("pipeline", generateSubPipelineLookup(tholder, onExp,
                 wherePartialExp, joinTableAlias, subqueryDocs));
         lookupInternal.put("as", joinTableAlias);
@@ -154,7 +156,7 @@ public final class JoinProcessor {
         whereExpression.accept(new ExpVisitorEraseAliasTableBaseBuilder(baseAliasTable));
 
         return (Document) whereClauseProcessor
-                .parseExpression(new Document(), whereExpression, null);
+                .parseExpression(new Document(), whereExpression, null, false);
     }
 
     /**

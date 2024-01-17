@@ -33,6 +33,7 @@ import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.NullValue;
+import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.StreamProvider;
@@ -55,7 +56,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -243,7 +243,7 @@ public final class QueryConverter {
                     Alias alias = selectExpressionItem.getAlias();
                     String key = (alias != null ? alias.getName() : columnName);
                     Document functionDoc = (Document) recurseFunctions(new Document(), f,
-                            defaultFieldType, fieldNameToFieldTypeMapping);
+                            defaultFieldType, fieldNameToFieldTypeMapping, false);
                     document.put(key, functionDoc);
                 } else {
                     throw new ParseException("Unsupported project expression");
@@ -258,11 +258,7 @@ public final class QueryConverter {
 
         if (sqlCommandInfoHolder.getJoins() != null) {
             mongoDBQueryHolder.setRequiresMultistepAggregation(true);
-            mongoDBQueryHolder.setJoinPipeline(
-                    JoinProcessor.toPipelineSteps(this,
-                            sqlCommandInfoHolder.getFromHolder(),
-                            sqlCommandInfoHolder.getJoins(), SqlUtils.cloneExpression(
-                                    sqlCommandInfoHolder.getWhereClause())));
+            processJoin(sqlCommandInfoHolder, mongoDBQueryHolder, document);
         }
 
         if (sqlCommandInfoHolder.getOrderByElements() != null && sqlCommandInfoHolder.getOrderByElements().size() > 0) {
@@ -279,7 +275,7 @@ public final class QueryConverter {
             if (preprocessedWhere != null) {
                 //can't be null because of where of joined tables
                 mongoDBQueryHolder.setQuery((Document) whereClauseProcessor
-                        .parseExpression(new Document(), preprocessedWhere, null));
+                        .parseExpression(new Document(), preprocessedWhere, null, false));
             }
 
             if (SQLCommandType.UPDATE.equals(sqlCommandInfoHolder.getSqlCommandType())) {
@@ -298,7 +294,7 @@ public final class QueryConverter {
                     updateSetDoc.put(SqlUtils.getColumnNameFromColumn(updateSet.getColumns().get(0)),
                             SqlUtils.getNormalizedValue(updateSet.getExpressions().get(0), null,
                                     defaultFieldType, fieldNameToFieldTypeMapping,
-                                    sqlCommandInfoHolder.getAliasHolder(), null));
+                                    sqlCommandInfoHolder.getAliasHolder(), null, false));
                 }
                 mongoDBQueryHolder.setUpdateSet(updateSetDoc);
                 List<String> unsets = new ArrayList<>();
@@ -323,7 +319,7 @@ public final class QueryConverter {
                     fieldNameToFieldTypeMapping, sqlCommandInfoHolder.getAliasHolder(),
                     mongoDBQueryHolder.isRequiresMultistepAggregation());
             mongoDBQueryHolder.setHaving((Document) havingClauseProcessor.parseExpression(new Document(),
-                    sqlCommandInfoHolder.getHavingClause(), null));
+                    sqlCommandInfoHolder.getHavingClause(), null, false));
         }
 
         mongoDBQueryHolder.setOffset(sqlCommandInfoHolder.getOffset());
@@ -332,25 +328,46 @@ public final class QueryConverter {
         return mongoDBQueryHolder;
     }
 
+    private void processJoin(final SQLCommandInfoHolder sqlCommandInfoHolder,
+        final MongoDBQueryHolder mongoDBQueryHolder, final Document document)
+          throws ParseException, net.sf.jsqlparser.parser.ParseException {
+        List<Document> unwinds  = new ArrayList<>();
+        List<Document> joinsList = JoinProcessor.toPipelineSteps(this,
+                sqlCommandInfoHolder.getFromHolder(),
+                sqlCommandInfoHolder.getJoins(), SqlUtils.cloneExpression(
+                         sqlCommandInfoHolder.getWhereClause()));
+//        Iterator<Document> it = joinsList.iterator();
+//        while (it.hasNext()) {
+//            Document join = it.next();
+//            if (join.get("$unwind") != null) {
+//                unwinds.add(join);
+//                it.remove();
+//            }
+//        }
+        mongoDBQueryHolder.setJoinUnwinds(unwinds);
+        mongoDBQueryHolder.setJoinPipeline(joinsList);
+    }
+
     protected Object recurseFunctions(final Document query, final Object object,
                                       final FieldType defaultFieldType,
-                                      final Map<String, FieldType> fieldNameToFieldTypeMapping) throws ParseException {
+                                      final Map<String, FieldType> fieldNameToFieldTypeMapping,
+                                      final boolean aggregationMode) throws ParseException {
         if (Function.class.isInstance(object)) {
             Function function = (Function) object;
             query.put("$" + SqlUtils.translateFunctionName(function.getName()),
                     recurseFunctions(new Document(), function.getParameters(),
-                            defaultFieldType, fieldNameToFieldTypeMapping));
+                            defaultFieldType, fieldNameToFieldTypeMapping, aggregationMode));
         } else if (ExpressionList.class.isInstance(object)) {
             ExpressionList expressionList = (ExpressionList) object;
             List<Object> objectList = new ArrayList<>();
             for (Expression expression : expressionList.getExpressions()) {
                 objectList.add(recurseFunctions(new Document(), expression,
-                        defaultFieldType, fieldNameToFieldTypeMapping));
+                        defaultFieldType, fieldNameToFieldTypeMapping, aggregationMode));
             }
             return objectList.size() == 1 ? objectList.get(0) : objectList;
         } else if (Expression.class.isInstance(object)) {
             Object normalizedValue = SqlUtils.getNormalizedValue((Expression) object, null,
-                    defaultFieldType, fieldNameToFieldTypeMapping, null);
+                    defaultFieldType, fieldNameToFieldTypeMapping, null, aggregationMode);
             if (Column.class.isInstance(object)) {
                 return "$" + ((String) normalizedValue);
             } else {
@@ -528,9 +545,15 @@ public final class QueryConverter {
         Document idDocument = new Document();
         for (SelectItem selectItem : nonFunctionItems) {
             SelectExpressionItem selectExpressionItem = ((SelectExpressionItem) selectItem);
-            Column column = (Column) selectExpressionItem.getExpression();
-            String columnName = SqlUtils.getStringValue(column);
-            idDocument.put(columnName.replaceAll("\\.", "_"), "$" + columnName);
+            if (selectExpressionItem.getExpression() instanceof Column) {
+                Column column = (Column) selectExpressionItem.getExpression();
+                String columnName = SqlUtils.getStringValue(column);
+                idDocument.put(columnName.replaceAll("\\.", "_"), "$" + columnName);
+            } else {
+               StringValue columnValue = (StringValue) selectExpressionItem.getExpression();
+               idDocument.put(selectExpressionItem.getAlias().getName().replaceAll("\\.", "_"),
+                   new Document("$literal", columnValue.getValue()));
+            }
         }
 
         if (!idDocument.isEmpty()) {
@@ -595,12 +618,17 @@ public final class QueryConverter {
         } else {
             for (SelectItem selectItem : nonFunctionItems) {
                 SelectExpressionItem selectExpressionItem = ((SelectExpressionItem) selectItem);
-                Column column = (Column) selectExpressionItem.getExpression();
-                String columnName = SqlUtils.getStringValue(column);
-                Alias alias = selectExpressionItem.getAlias();
-                String nameOrAlias = (alias != null ? alias.getName() : columnName);
-                aliasProjectionForGroupItems.getDocument().put(nameOrAlias,
-                        "$_id." + columnName.replaceAll("\\.", "_"));
+                if (selectExpressionItem.getExpression() instanceof Column) {
+                    Column column = (Column) selectExpressionItem.getExpression();
+                    String columnName = SqlUtils.getStringValue(column);
+                    Alias alias = selectExpressionItem.getAlias();
+                    String nameOrAlias = (alias != null ? alias.getName() : columnName);
+                    aliasProjectionForGroupItems.getDocument().put(nameOrAlias,
+                            "$_id." + columnName.replaceAll("\\.", "_"));
+                } else {
+                    aliasProjectionForGroupItems.getDocument().put(selectExpressionItem.getAlias().getName(),
+                            "$_id." + selectExpressionItem.getAlias().getName().replaceAll("\\.", "_"));
+                }
             }
         }
 
@@ -1005,6 +1033,9 @@ public final class QueryConverter {
         if (mongoDBQueryHolder.getSort() != null && mongoDBQueryHolder.getSort().size() > 0) {
             documents.add(new Document("$sort", mongoDBQueryHolder.getSort()));
         }
+        if (sqlCommandInfoHolder.getJoins() != null && !sqlCommandInfoHolder.getJoins().isEmpty()) {
+            documents.addAll(mongoDBQueryHolder.getJoinUnwinds());
+        }
         if (mongoDBQueryHolder.getOffset() != -1) {
             documents.add(new Document("$skip", mongoDBQueryHolder.getOffset()));
         }
@@ -1027,21 +1058,6 @@ public final class QueryConverter {
 
         return documents;
     }
-
-    private static String toJson(final List<Document> documents) throws IOException {
-        StringWriter stringWriter = new StringWriter();
-        IOUtils.write("[", stringWriter);
-        IOUtils.write(Joiner.on(",").join(Lists.transform(documents,
-                new com.google.common.base.Function<Document, String>() {
-                    @Override
-                    public String apply(@Nonnull final Document document) {
-                        return document.toJson(RELAXED);
-                    }
-                })), stringWriter);
-        IOUtils.write("]", stringWriter);
-        return stringWriter.toString();
-    }
-
 
     private static String prettyPrintJson(final String json) {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();

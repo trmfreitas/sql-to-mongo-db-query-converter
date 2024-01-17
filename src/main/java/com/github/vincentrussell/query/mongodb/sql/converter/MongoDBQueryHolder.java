@@ -17,6 +17,7 @@ public class MongoDBQueryHolder {
     private Document sort = new Document();
     private Document aliasProjection = new Document();
     private List<Document> joinPipeline = new ArrayList<Document>();
+    private List<Document> joinUnwinds = new ArrayList<Document>();
     private boolean distinct = false;
     private boolean countAll = false;
     private List<String> groupBys = new ArrayList<>();
@@ -272,11 +273,27 @@ public class MongoDBQueryHolder {
     }
 
     /**
+     * get the aggregation pipeline unwind steps needed to perform a join.
+     * @return the aggregation pipeline unwind steps needed to perform a join
+     */
+    public List<Document> getJoinUnwinds() {
+        return joinUnwinds;
+    }
+
+    /**
      * Set the aggregation pipeline steps needed to perform a join.
      * @param joinPipeline the aggregation pipeline steps needed to perform a join.
      */
     public void setJoinPipeline(final List<Document> joinPipeline) {
         this.joinPipeline = joinPipeline;
+    }
+
+    /**
+     * Set the aggregation pipeline unwind steps needed to perform a join.
+     * @param joinUnwinds the aggregation pipeline unwind steps needed to perform a join.
+     */
+    public void setJoinUnwinds(final List<Document> joinUnwinds) {
+        this.joinUnwinds = joinUnwinds;
     }
 
     /**

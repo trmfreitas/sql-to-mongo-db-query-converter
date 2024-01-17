@@ -26,6 +26,7 @@ import net.sf.jsqlparser.expression.operators.relational.InExpression;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.AllColumns;
+import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.Limit;
 import net.sf.jsqlparser.statement.select.Offset;
@@ -107,15 +108,17 @@ public final class SqlUtils {
      * @param defaultFieldType the default {@link FieldType}
      * @param fieldNameToFieldTypeMapping the field name to {@link FieldType} map
      * @param sign a negative or positive sign
+     * @param aggregationMode indicates if value is inside aggregation expression
      * @return the normalized value
      * @throws ParseException if there is a parsing issue
      */
     public static Object getNormalizedValue(final Expression incomingExpression, final Expression otherSide,
                                             final FieldType defaultFieldType,
                                             final Map<String, FieldType> fieldNameToFieldTypeMapping,
-                                            final Character sign) throws ParseException {
+                                            final Character sign,
+                                            final boolean aggregationMode) throws ParseException {
         return getNormalizedValue(incomingExpression, otherSide, defaultFieldType, fieldNameToFieldTypeMapping,
-                new AliasHolder(), sign);
+                new AliasHolder(), sign, aggregationMode);
     }
 
 
@@ -128,6 +131,7 @@ public final class SqlUtils {
      * @param fieldNameToFieldTypeMapping the field name to {@link FieldType} map
      * @param aliasHolder an aliasHolder
      * @param sign a negative or positive sign
+     * @param aggregationMode indicates if inside aggregation expression
      * @return the normalized value
      * @throws ParseException if there is a parsing issue
      */
@@ -135,7 +139,7 @@ public final class SqlUtils {
                                             final FieldType defaultFieldType,
                                             final Map<String, FieldType> fieldNameToFieldTypeMapping,
                                             final AliasHolder aliasHolder,
-                                            final Character sign)
+                                            final Character sign, final boolean aggregationMode)
             throws ParseException {
         FieldType fieldType = otherSide != null ? firstNonNull(
                 fieldNameToFieldTypeMapping.get(getStringValue(otherSide)),
@@ -149,7 +153,7 @@ public final class SqlUtils {
         } else if (SignedExpression.class.isInstance(incomingExpression)) {
             SignedExpression signedExpression = (SignedExpression) incomingExpression;
             return getNormalizedValue(signedExpression.getExpression(), otherSide, defaultFieldType,
-                    fieldNameToFieldTypeMapping, aliasHolder, signedExpression.getSign());
+                    fieldNameToFieldTypeMapping, aliasHolder, signedExpression.getSign(), aggregationMode);
         } else if (StringValue.class.isInstance(incomingExpression)) {
             return getNormalizedValue((((StringValue) incomingExpression).getValue()), fieldType);
         } else if (Column.class.isInstance(incomingExpression)) {
@@ -157,9 +161,13 @@ public final class SqlUtils {
             if (aliasHolder != null && !aliasHolder.isEmpty()
                     && String.class.isInstance(normalizedColumn)
                     && aliasHolder.containsAliasForFieldExp((String) normalizedColumn)) {
-                return aliasHolder.getAliasFromFieldExp((String) normalizedColumn);
+                return (aggregationMode ? "$" : "") + aliasHolder.getAliasFromFieldExp((String) normalizedColumn);
             }
-            return normalizedColumn;
+            if (String.class.isInstance(normalizedColumn) && aggregationMode) {
+                return "$" + normalizedColumn;
+            } else {
+                return normalizedColumn;
+            }
         } else if (TimestampValue.class.isInstance(incomingExpression)) {
             return getNormalizedValue(
                     new Date((((TimestampValue) incomingExpression).getValue().getTime())), fieldType);
@@ -266,7 +274,7 @@ public final class SqlUtils {
     public static boolean isSelectAll(final List<SelectItem> selectItems) {
         if (selectItems != null && selectItems.size() == 1) {
             SelectItem firstItem = selectItems.get(0);
-            return AllColumns.class.isInstance(firstItem);
+            return AllColumns.class.isInstance(firstItem) || AllTableColumns.class.isInstance(firstItem);
         } else {
             return false;
         }
@@ -490,7 +498,7 @@ public final class SqlUtils {
                                 public Object apply(final Expression expression) {
                                     try {
                                         return whereClauseProcessor.parseExpression(
-                                                new Document(), expression, leftExpression);
+                                                new Document(), expression, leftExpression, false);
                                     } catch (ParseException e) {
                                         throw new RuntimeException(e);
                                     }
@@ -802,7 +810,7 @@ public final class SqlUtils {
     public static Object nonFunctionToNode(final Expression exp, final boolean requiresMultistepAggregation)
             throws ParseException {
         return (SqlUtils.isColumn(exp) && !exp.toString().startsWith("$") && requiresMultistepAggregation)
-                ? ("$" + exp) : getNormalizedValue(exp, null, FieldType.UNKNOWN, null, null);
+                ? ("$" + exp) : getNormalizedValue(exp, null, FieldType.UNKNOWN, null, null, false);
     }
 
     /**
