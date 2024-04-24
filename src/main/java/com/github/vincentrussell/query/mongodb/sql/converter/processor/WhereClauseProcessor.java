@@ -239,6 +239,9 @@ public class WhereClauseProcessor {
             String stringValueRightSide = SqlUtils.getStringValue(likeExpression.getRightExpression());
             String convertedRegexString = "^" + SqlUtils.replaceRegexCharacters(stringValueRightSide) + "$";
             Document document = new Document("$regex", convertedRegexString);
+            if (likeExpression.isCaseInsensitive()) {
+                document.put("$options", "i");
+            }
             if (likeExpression.isNot()) {
                 document = new Document(stringValueLeftSide, new Document("$not", Pattern.compile(
                         convertedRegexString)));
